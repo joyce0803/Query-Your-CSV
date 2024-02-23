@@ -38,7 +38,7 @@ st.set_page_config(layout="wide")
 # else:
 #     st.error("API key is required to use this application !!!!")
 
-tools = ...
+
 prompt = hub.pull("hwchase17/openai-functions-agent",)
 
 
@@ -275,15 +275,15 @@ def demo():
     # If a function is selected
     if selected_function:
         if selected_function == "columns":
-            st.write(df1.columns)
+            st.write(pandasai_agent.columns)
         elif selected_function == "columns_count":
-            st.info(df1.columns_count)
+            st.info(pandasai_agent.columns_count)
         elif selected_function == "plot_correlation_heatmap":
-            df1.plot_correlation_heatmap()
+            pandasai_agent.plot_correlation_heatmap()
             plt.savefig("temp_image.png")
             st.image("temp_image.png", use_column_width='auto')
         elif selected_function == "rows_count":
-            st.info(df1.rows_count)
+            st.info(pandasai_agent.rows_count)
         else:
             function_name, *params = selected_function.split("(")
             parameters = [param.strip() for param in params]
@@ -298,12 +298,12 @@ def demo():
                     for sub_param in sub_params:
                         sub_param = sub_param.strip()
                         selected_value = st.selectbox(f"Select {sub_param} for {function_name}",
-                                                      [""] + list(df1.columns), index=0)
+                                                      [""] + list(pandasai_agent.columns), index=0)
                         user_input[sub_param] = selected_value
                         print(user_input)
                 else:
                     selected_value = st.selectbox(f"Select {param} for {function_name}",
-                                                  [""] + list(df1.columns), index=0)
+                                                  [""] + list(pandasai_agent.columns), index=0)
                     user_input[param] = selected_value
 
 
@@ -486,7 +486,7 @@ elif menu == "Query your CSV":
         if user_csv is not None:
             user_csv.seek(0)
             df = pd.read_csv(user_csv, low_memory=False)
-            df1 = SmartDataframe(df,config={"llm": llm, "response_parser": StreamlitResponse})
+            # df1 = SmartDataframe(df,config={"llm": llm, "response_parser": StreamlitResponse})
             pandas_agent = create_pandas_dataframe_agent(
                 llm,
                 df,
