@@ -1,0 +1,9 @@
+.env
+cache
+csvfile.csv
+pandasai.log
+main.py
+robot.png
+robot (1).png
+temp_image.png
+user.png

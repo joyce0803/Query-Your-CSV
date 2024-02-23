@@ -25,18 +25,18 @@ st.set_page_config(layout="wide")
 
 
 
-api_key_llm = st.sidebar.text_input("#### Enter your API key", type="password")
-if api_key_llm:
-    # GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY')
-    # COHERE_API_KEY = os.getenv('COHERE_API_KEY')
-
-    lida = Manager(text_gen=llm(provider="cohere", api_key=api_key_llm))
-    textgen_config = TextGenerationConfig(temperature=0.5, model="command", use_cache=True)
-
-    genai.configure(api_key=api_key_llm)
-    llm = ChatGoogleGenerativeAI(model="gemini-pro", google_api_key=api_key_llm,temperature=0,convert_system_message_to_human=True)
-else:
-    st.error("API key is required to use this application !!!!")
+# api_key_llm = st.sidebar.text_input("#### Enter your API key", type="password")
+# if api_key_llm:
+#     # GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY')
+#     # COHERE_API_KEY = os.getenv('COHERE_API_KEY')
+#
+#     lida = Manager(text_gen=llm(provider="cohere", api_key=api_key_llm))
+#     textgen_config = TextGenerationConfig(temperature=0.5, model="command", use_cache=True)
+#
+#     genai.configure(api_key=api_key_llm)
+#     llm = ChatGoogleGenerativeAI(model="gemini-pro", google_api_key=api_key_llm,temperature=0,convert_system_message_to_human=True)
+# else:
+#     st.error("API key is required to use this application !!!!")
 
 tools = ...
 prompt = hub.pull("hwchase17/openai-functions-agent",)
@@ -94,13 +94,13 @@ functions = [
     "value_counts"
 ]
 
-@st.cache_data(experimental_allow_widgets=True)
+# @st.cache_data(experimental_allow_widgets=True)
 def display_df():
     container1 = st.container()
     container1.success("###### First rows of your dataset ")
     container1.write(df.head(10))
 
-@st.cache_data(experimental_allow_widgets=True)
+# @st.cache_data(experimental_allow_widgets=True)
 def data_cleaning():
     container2 = st.container()
     container2.success("###### Column Details ")
@@ -114,7 +114,7 @@ def data_cleaning():
     duplicates = pandas_agent.run("Are there any duplicate values in the dataset and if so where ?")
     container2.write(duplicates)
 
-@st.cache_data(experimental_allow_widgets=True)
+# @st.cache_data(experimental_allow_widgets=True)
 def data_summarization():
     container3 = st.container()
     container3.success("###### Dataset Summary")
@@ -137,7 +137,7 @@ def data_summarization():
     new_features = pandas_agent.run("What new features would be interesting to create?")
     container3.write(new_features)
 
-@st.cache_data(experimental_allow_widgets=True)
+# @st.cache_data(experimental_allow_widgets=True)
 def function_question_variable(user_question_variable):
     try:
 
@@ -210,7 +210,7 @@ def user_queries():
 
 def function_agent():
     st.write(" ")
-    component = TabBar(tabs=["Data Overview", "Data Summarization", "Analyze / Visualize", "User Queries"],default=0,color="grey",activeColor="#6FB98F",fontSize="15px")
+    component = TabBar(tabs=["Data Overview", "Data Summarization", "Analyze / Visualize", "User Queries"],default=0,color="black",activeColor="#5031F",fontSize="15px")
     if component == 0:
         col1, col2 = st.columns(2)
         with col1:
@@ -333,128 +333,142 @@ def demo():
 menu = st.sidebar.selectbox('#### Choose an Option',["Summarize","Query your CSV"])
 if menu == "Summarize":
     st.title("Summarization of your Data")
+    api_key_lida = st.sidebar.text_input("#### Enter your API key", type="password")
+    if api_key_lida:
+        # GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY')
+        # COHERE_API_KEY = os.getenv('COHERE_API_KEY')
 
-    #### Generate summary
-    summarization_methods = [
-        {"label": "llm",
-         "description": "Uses the LLM to generate annotate the default summary, adding details such as semantic types for columns and dataset description"},
-        {"label": "default",
-         "description": "Uses dataset column statistics and column names as the summary"},
-        {"label": "columns", "description": "Uses the dataset column names as the summary"}]
-    selected_method_label = st.sidebar.selectbox('#### Choose a summarization method',options= [method["label"] for method in summarization_methods],index=0)
-    selected_method = summarization_methods[[method["label"] for method in summarization_methods].index(selected_method_label)]["label"]
-    selected_method_description = summarization_methods[[method["label"] for method in summarization_methods].index(selected_method_label)]["description"]
-    if selected_method:
-        st.sidebar.markdown(
-            f"<span> {selected_method_description} </span>", unsafe_allow_html=True
-        )
+        lida = Manager(text_gen=llm(provider="cohere", api_key=api_key_lida))
+        textgen_config = TextGenerationConfig(temperature=0.2, model="command", use_cache=True)
 
-    file_uploader = st.file_uploader("Upload your CSV", type="csv")
-    if file_uploader is not None:
-        path_to_save = "csvfile.csv"
-        with open(path_to_save, "wb") as f:
-            f.write(file_uploader.getvalue())
-
-        st.write("### Summary")
-        summary = lida.summarize("csvfile.csv", summary_method=selected_method, textgen_config=textgen_config)
-        if "dataset_description" in summary:
-            st.write(summary["dataset_description"])
-        if "fields" in summary:
-            fields = summary["fields"]
-            nfields = []
-            for field in fields:
-                flatted_fields = {}
-                flatted_fields["column"] = field["column"]
-                for row in field["properties"].keys():
-                    print(field["properties"])
-                    if row != "samples":
-                        flatted_fields[row] = field["properties"][row]
-                    else:
-                        flatted_fields[row] = str(field["properties"][row])
-                nfields.append(flatted_fields)
-            nfields_df = pd.DataFrame(nfields)
-            st.write(nfields_df)
-        else:
-            st.write(summary)
-
-        ### Generate goals
-        summaryGoal = lida.summarize("csvfile.csv", summary_method="default", textgen_config=textgen_config)
-        if summaryGoal:
-            st.sidebar.write("#### Goal Selection")
-            num_goals = st.sidebar.slider(
-                "Number of goals to generate",
-                min_value=1,
-                max_value=10,
-                value=3
+        #### Generate summary
+        summarization_methods = [
+            {"label": "llm",
+             "description": "Uses the LLM to generate annotate the default summary, adding details such as semantic types for columns and dataset description"},
+            {"label": "default",
+             "description": "Uses dataset column statistics and column names as the summary"},
+            {"label": "columns", "description": "Uses the dataset column names as the summary"}]
+        selected_method_label = st.sidebar.selectbox('#### Choose a summarization method',options= [method["label"] for method in summarization_methods],index=0)
+        selected_method = summarization_methods[[method["label"] for method in summarization_methods].index(selected_method_label)]["label"]
+        selected_method_description = summarization_methods[[method["label"] for method in summarization_methods].index(selected_method_label)]["description"]
+        if selected_method:
+            st.sidebar.markdown(
+                f"<span> {selected_method_description} </span>", unsafe_allow_html=True
             )
-            own_goal = st.sidebar.checkbox("Add your own goal")
-            goals = lida.goals(summaryGoal, n=num_goals, textgen_config=textgen_config)
-            st.write(f"### Goals ({len(goals)})")
 
-            default_goal = goals[0].question
-            goal_questions = [goal.question for goal in goals]
+        file_uploader = st.file_uploader("Upload your CSV", type="csv")
+        if file_uploader is not None:
+            path_to_save = "csvfile.csv"
+            with open(path_to_save, "wb") as f:
+                f.write(file_uploader.getvalue())
 
-            if own_goal:
-                user_goal = st.sidebar.text_area("Describe your goal")
-                if user_goal:
-                    new_goal = Goal(question = user_goal, visualization = user_goal, rationale="")
-                    goals.append(new_goal)
-                    goal_questions.append(new_goal.question)
-            selected_goal = st.selectbox('#### Choose a generated goal',options=goal_questions,index=0)
-            selected_goal_index = goal_questions.index(selected_goal)
-            st.write(goals[selected_goal_index])
-            selected_goal_object = goals[selected_goal_index]
+            st.write("### Summary")
+            summary = lida.summarize("csvfile.csv", summary_method=selected_method, textgen_config=textgen_config)
+            summaryGoal = lida.summarize("csvfile.csv", summary_method="default", textgen_config=textgen_config)
+            if "dataset_description" in summary:
+                st.write(summary["dataset_description"])
+            if "fields" in summary:
+                fields = summary["fields"]
+                nfields = []
+                for field in fields:
+                    flatted_fields = {}
+                    flatted_fields["column"] = field["column"]
+                    for row in field["properties"].keys():
+                        print(field["properties"])
+                        if row != "samples":
+                            flatted_fields[row] = field["properties"][row]
+                        else:
+                            flatted_fields[row] = str(field["properties"][row])
+                    nfields.append(flatted_fields)
+                nfields_df = pd.DataFrame(nfields)
+                st.write(nfields_df)
+            else:
+                st.write(summary)
 
-            if selected_goal_object:
-                visualization_libraries = ["seaborn","matplotlib","plotly"]
-                selected_library = st.sidebar.selectbox(
-                    '#### Choose a Visualization Library',
-                    options=visualization_libraries,
-                    index=0
-                )
-                st.write('### Visualizations')
-                num_visualizations = st.sidebar.slider(
-                    "Number of visualizations ",
+            ### Generate goals
+
+
+            if summaryGoal:
+                st.sidebar.write("#### Goal Selection")
+                num_goals = st.sidebar.slider(
+                    "Number of goals to generate",
                     min_value=1,
                     max_value=10,
                     value=2
                 )
-                textgen_config = TextGenerationConfig(
-                    n=num_visualizations,
-                    temperature=0.3,
-                    model="command",
-                    use_cache=True
-                )
-                visualizations = lida.visualize(
-                    summary=summaryGoal,
-                    goal = selected_goal_object,
-                    textgen_config=textgen_config,
-                    library=selected_library
-                )
-                viz_titles = [f'Visualization {i+1}' for i in range(len(visualizations))]
-                selected_viz_title = st.selectbox('Choose a visualization',options=viz_titles,index=0)
-                if selected_viz_title is not None:
-                    selected_viz = visualizations[viz_titles.index(selected_viz_title)]
-                    if selected_viz.raster:
-                        imgdata = base64.b64decode(selected_viz.raster)
-                        img = Image.open(io.BytesIO(imgdata))
-                        st.image(img, caption=selected_viz_title, use_column_width="auto")
+                own_goal = st.sidebar.checkbox("Add your own goal")
+                goals = lida.goals(summaryGoal, n=num_goals, textgen_config=textgen_config)
+
+                print(goals)
+                st.write(f"### Goals ({len(goals)})")
+
+                default_goal = goals[0].question
+                goal_questions = [goal.question for goal in goals]
+
+                if own_goal:
+                    user_goal = st.sidebar.text_area("Describe your goal")
+                    if user_goal:
+                        new_goal = Goal(question = user_goal, visualization = str(user_goal), rationale="")
+
+                        goals.append(new_goal)
+                        goal_questions.append(new_goal.question)
+                selected_goal = st.selectbox('#### Choose a generated goal',options=goal_questions,index=0)
+                selected_goal_index = goal_questions.index(selected_goal)
+                st.write(goals[selected_goal_index])
+                selected_goal_object = goals[selected_goal_index]
+
+                if selected_goal_object:
+                    visualization_libraries = ["seaborn","matplotlib","plotly"]
+                    selected_library = st.sidebar.selectbox(
+                        '#### Choose a Visualization Library',
+                        options=visualization_libraries,
+                        index=0
+                    )
+                    st.write('### Visualizations')
+                    num_visualizations = st.sidebar.slider(
+                        "Number of visualizations ",
+                        min_value=1,
+                        max_value=10,
+                        value=1
+                    )
+                    textgen_config = TextGenerationConfig(
+                        n=num_visualizations,
+                        temperature=0.3,
+                        model="command",
+                        use_cache=True
+                    )
+                    visualizations = lida.visualize(
+                        summary=summaryGoal,
+                        goal = selected_goal_object,
+                        textgen_config=textgen_config,
+                        library=selected_library
+                    )
+                    viz_titles = [f'Visualization {i+1}' for i in range(len(visualizations))]
+                    selected_viz_title = st.selectbox('Choose a visualization',options=viz_titles,index=0)
+                    if selected_viz_title is not None:
+                        selected_viz = visualizations[viz_titles.index(selected_viz_title)]
+                        if selected_viz.raster:
+                            imgdata = base64.b64decode(selected_viz.raster)
+                            img = Image.open(io.BytesIO(imgdata))
+                            st.image(img, caption=selected_viz_title, use_column_width="auto")
 
 
-                    st.write("### Visualization Code")
-                    st.code(selected_viz.code)
-                    print(selected_viz.code)
-                    explanations = lida.explain(code=selected_viz.code, library=selected_library, textgen_config=textgen_config)
-                    container = st.container(border=True)
-                    for row in explanations[0]:
-                        container.write(f'***{row["section"].capitalize()}***')
-                        container.write(f'{row["explanation"]}')
+                        st.write("### Visualization Code")
+                        st.code(selected_viz.code)
+                        print(selected_viz.code)
+                        explanations = lida.explain(code=selected_viz.code, library=selected_library, textgen_config=textgen_config)
+                        container = st.container(border=True)
+                        for row in explanations[0]:
+                            container.write(f'***{row["section"].capitalize()}***')
+                            container.write(f'{row["explanation"]}')
+    else:
+        st.error("API key is required to use this application !!!!")
 
 elif menu == "Query your CSV":
     st.markdown(
         """
         <div style="text-align: center;">
-            <h1 style="color: white; font-weight:bold; margin-top:0px; padding-top:0px; margin-bottom:10px;">
+            <h1 style="color: dark-grey; font-weight:bold; margin-top:0px; padding-top:0px; margin-bottom:10px;">
                 Query Your CSV  
                  <a href="https://emoji.gg/emoji/1938_MicrosoftExcel"><img src="https://cdn3.emoji.gg/emojis/1938_MicrosoftExcel.png" width="30px" height="30px" alt="MicrosoftExcel"></a>
             </h1>
@@ -464,20 +478,26 @@ elif menu == "Query your CSV":
         """,
         unsafe_allow_html=True
     )
-    user_csv = st.sidebar.file_uploader("#### Upload your file here!", type="csv")
-    if user_csv is not None:
-        user_csv.seek(0)
-        df = pd.read_csv(user_csv, low_memory=False)
-        df1 = SmartDataframe(df,config={"llm": llm, "response_parser": StreamlitResponse})
-        pandas_agent = create_pandas_dataframe_agent(
-            llm,
-            df,
-            agent_type="openai-tools",
-            verbose=True
-        )
-        pandasai_agent = SmartDataframe(
-            df, config={"llm":llm, "response_parser": StreamlitResponse})
-        print(user_defined_path)
-        st.subheader('Exploratory data analysis')
+    api_key_llm = st.sidebar.text_input("#### Enter your API key", type="password")
+    if api_key_llm:
+        genai.configure(api_key=api_key_llm)
+        llm = ChatGoogleGenerativeAI(model="gemini-pro", google_api_key=api_key_llm, temperature=0,convert_system_message_to_human=True)
+        user_csv = st.sidebar.file_uploader("#### Upload your file here!", type="csv")
+        if user_csv is not None:
+            user_csv.seek(0)
+            df = pd.read_csv(user_csv, low_memory=False)
+            df1 = SmartDataframe(df,config={"llm": llm, "response_parser": StreamlitResponse})
+            pandas_agent = create_pandas_dataframe_agent(
+                llm,
+                df,
+                agent_type="openai-tools",
+                verbose=True
+            )
+            pandasai_agent = SmartDataframe(
+                df, config={"llm":llm, "response_parser": StreamlitResponse})
+            print(user_defined_path)
+            st.subheader('Exploratory data analysis')
 
-        function_agent()
+            function_agent()
+    else:
+        st.error("API key is required to use this application !!!!")
