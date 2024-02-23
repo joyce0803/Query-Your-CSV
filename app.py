@@ -38,7 +38,7 @@ st.set_page_config(layout="wide")
 # else:
 #     st.error("API key is required to use this application !!!!")
 
-
+tools = ...
 prompt = hub.pull("hwchase17/openai-functions-agent",)
 
 
@@ -216,17 +216,7 @@ def function_agent():
         with col1:
             display_df()
         with col2:
-            container2 = st.container()
-            container2.success("###### Column Details ")
-            columns_df = pandasai_agent.chat("What are the meaning of the columns in bulletin points?")
-            container2.write(columns_df)
-            # container2.success("###### Missing Values")
-            # missing_values = pandas_agent.run(
-            #     "How many missing values does this dataframe have? Start the answer with 'There are' ")
-            # container2.write(missing_values)
-            # container2.success("###### Duplicate Values")
-            # duplicates = pandas_agent.run("Are there any duplicate values in the dataset and if so where ?")
-            # container2.write(duplicates)
+            data_cleaning()
     elif component == 1:
         data_summarization()
     elif component == 2:
@@ -492,7 +482,7 @@ elif menu == "Query your CSV":
     if api_key_llm:
         genai.configure(api_key=api_key_llm)
         # pandasai_llm = GooglePalm(api_key=api_key_llm)
-        llm = ChatGoogleGenerativeAI(model="gemini-pro", google_api_key=api_key_llm, temperature=0,convert_system_message_to_human=True)
+        llm = ChatGoogleGenerativeAI(model="gemini-pro", google_api_key=api_key_llm, temperature=0,convert_system_message_to_human=True,tools=tools)
         user_csv = st.sidebar.file_uploader("#### Upload your file here!", type="csv")
         if user_csv is not None:
             user_csv.seek(0)
