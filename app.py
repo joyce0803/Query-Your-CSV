@@ -104,10 +104,10 @@ def display_df():
 def data_cleaning():
     container2 = st.container()
     container2.success("###### Column Details ")
-    columns_df = pandas_agent.run("What are the meaning of the columns?")
+    columns_df = pandas_agent.invoke("What are the meaning of the columns?")
     container2.write(columns_df)
     container2.success("###### Missing Values")
-    missing_values = pandas_agent.run(
+    missing_values = pandas_agent.invoke(
         "How many missing values does this dataframe have? Start the answer with 'There are' ")
     container2.write(missing_values)
     container2.success("###### Duplicate Values")
