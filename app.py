@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 from PIL import Image
 import base64
 from lida.datamodel import Goal
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAI
 from langchain_experimental.agents.agent_toolkits.pandas.base import create_pandas_dataframe_agent
 from langchain import hub
 from st_tabs import TabBar
@@ -218,7 +218,7 @@ def function_agent():
         with col2:
             container2 = st.container()
             container2.success("###### Column Details ")
-            columns_df = pandas_agent.run("What are the meaning of the columns?")
+            columns_df = pandasai_agent.chat("What are the meaning of the columns in bulletin points?")
             container2.write(columns_df)
             # container2.success("###### Missing Values")
             # missing_values = pandas_agent.run(
@@ -491,6 +491,7 @@ elif menu == "Query your CSV":
     api_key_llm = st.sidebar.text_input("#### Enter your API key", type="password")
     if api_key_llm:
         genai.configure(api_key=api_key_llm)
+        # pandasai_llm = GooglePalm(api_key=api_key_llm)
         llm = ChatGoogleGenerativeAI(model="gemini-pro", google_api_key=api_key_llm, temperature=0,convert_system_message_to_human=True)
         user_csv = st.sidebar.file_uploader("#### Upload your file here!", type="csv")
         if user_csv is not None:
