@@ -1,0 +1,13 @@
+google-generativeai
+python-dotenv
+streamlit
+lida
+pandasai
+langchain
+langchain-google-genai
+langchain-experimental
+tabulate
+langchainhub
+st_tabs
+streamlit-chat
+PyQt5
