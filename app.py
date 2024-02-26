@@ -105,7 +105,7 @@ def display_df():
 def data_cleaning():
     container2 = st.container()
     container2.success("###### Column Details ")
-    columns_df = pandas_agent.run("What are the meaning of the columns?")
+    columns_df = pandas_agent.run(input = "What are the meaning of the columns?")
     container2.write(columns_df)
     container2.success("###### Missing Values")
     missing_values = pandas_agent.run(
