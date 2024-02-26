@@ -19,6 +19,7 @@ from pandasai.helpers import path
 import matplotlib.pyplot as plt
 from streamlit.runtime.media_file_storage import MediaFileStorageError
 from langchain_community.chat_models import ChatCohere
+import mysql.connector
 
 
 load_dotenv()
@@ -40,7 +41,13 @@ st.set_page_config(layout="wide")
 #     st.error("API key is required to use this application !!!!")
 
 tools = ...
-prompt = hub.pull("hwchase17/openai-functions-agent",)
+prompt = hub.pull("hwchase17/openai-functions-agent")
+
+GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
+genai.configure(api_key=GOOGLE_API_KEY)
+model = genai.GenerativeModel('gemini-pro')
+
+
 
 
 
@@ -55,6 +62,29 @@ try:
 except ValueError:
     user_defined_path = os.getcwd()
 user_defined_path = os.path.join(user_defined_path, "exports", "charts")
+
+def connect_to_database(database_name,user_name,password):
+    return mysql.connector.connect(
+        host="localhost",
+        user=user_name,
+        password=password,
+        database=database_name
+    )
+
+def execute_query(query):
+    try:
+        connection = connect_to_database()
+        if connection.is_connected():
+            cursor = connection.cursor()
+            cursor.execute(query)
+            rows = cursor.fetchall()
+            return rows
+    except mysql.connector.Error as e:
+        st.error(f"Error executing SQL Query: {e}")
+    finally:
+        if connection.is_connected():
+            cursor.close()
+            connection.close()
 
 functions = [
     "boxplot",
@@ -209,7 +239,7 @@ def user_queries():
 
 def function_agent():
     st.write(" ")
-    component = TabBar(tabs=["Data Overview", "Data Summarization", "Analyze / Visualize", "User Queries"],default=0,color="black",activeColor="#5031F",fontSize="15px")
+    component = TabBar(tabs=["Data Overview", "Data Summarization", "Analyze / Visualize", "User Queries","SQl-To-Text"],default=0,color="black",activeColor="#5031F",fontSize="15px")
     if component == 0:
         col1, col2 = st.columns(2)
         with col1:
@@ -228,6 +258,7 @@ def function_agent():
                 function_question_variable(user_question_variable)
         with col2:
             user_queries()
+
 
 def demo():
     # Define the list of functions
@@ -329,7 +360,7 @@ def demo():
                 st.error(f"Error occurred while executing {selected_function}: {str(e)}")
 
 
-menu = st.sidebar.selectbox('#### Choose an Option',["Summarize","Query your CSV"])
+menu = st.sidebar.selectbox('#### Choose an Option',["Summarize","Query your CSV","Text-To-SQL"])
 if menu == "Summarize":
     st.title("Summarization of your Data")
     api_key_lida = st.sidebar.text_input("#### Enter your API key", type="password")
@@ -503,3 +534,91 @@ elif menu == "Query your CSV":
             function_agent()
     else:
         st.error("API key is required to use this application !!!!")
+
+
+elif menu == "Text-To-SQL":
+    st.markdown(
+        """
+            <div style=text-align:center;>
+                <h2>SQL Query Generator 🛢️🤖 </h2>
+                <p style=color:grey;>This tool can retrieve data from SQL Database using natural language queries</p>
+            </div>
+        """,
+        unsafe_allow_html=True
+    )
+    database_name = st.text_input("Enter the name of the database")
+    table_name = st.text_input("Enter the name of the table")
+    user_name = st.text_input("Enter the username")
+    password = st.text_input("Enter the password", type="password")
+
+    column_names = []
+    cursor = None
+    connection = None
+    if database_name is not None and table_name is not None and user_name is not None and password is not None:
+        try:
+
+            connection = connect_to_database(database_name,user_name,password)
+
+            if connection.is_connected():
+                cursor = connection.cursor()
+                cursor.execute(f'''SELECT * FROM {table_name}''')
+                rows = cursor.fetchall()
+                column_names = [i[0] for i in cursor.description]
+                df = pd.DataFrame(rows, columns=column_names)
+                st.dataframe(df, height=400)
+        except mysql.connector.Error as e:
+            print("Error reading data from MySQL table:", e)
+        finally:
+            if cursor is not None:
+                cursor.close()
+            if connection is not None:
+                connection.close()
+            print("MySQL connection is closed")
+
+        st.write('')
+
+        if table_name is not None and column_names:
+            text_input = st.text_area("##### Enter your Query")
+            submit = st.button("Retrieve data from SQL")
+            if submit:
+                with st.spinner("Executing SQL Query..."):
+                    template = f"""
+                            Create a SQL query snippet using the below text for the table with table name {table_name} and columns {column_names}:
+                            ```
+                                {text_input}
+                            ```
+                            I just want a SQL Query.
+                        """
+                    formatted_template = template.format(text_input=text_input)
+                    response = model.generate_content(formatted_template)
+                    sql_query = response.text
+                    sql_query = sql_query.strip().lstrip("```sql").rstrip("```")
+                    rows = execute_query(sql_query)
+
+                    explanation = f"""
+                                        Explain this sql Query:
+                                        ```
+                                            {sql_query}
+                                        ```
+                                        Please provide with simplest of explanation of the snippet.
+                                    """
+                    explanation_formatted = explanation.format(sql_query=sql_query)
+                    explain_output = model.generate_content(explanation_formatted)
+                    explain_response = explain_output.text
+
+                    with st.container():
+                        st.success("SQL Query generated successfully ! ")
+                        st.code(sql_query, language='sql')
+                        st.write(" ")
+                        st.write(" ")
+                        st.success("Output of this SQL Query")
+                        # st.markdown(output_response)
+                        if rows:
+                            st.dataframe(rows)
+                        else:
+                            st.info("No data retrieved from the database")
+                        st.write(" ")
+                        st.write(" ")
+                        st.success("Explanation of this SQL Query")
+                        st.markdown(explain_response)
+
