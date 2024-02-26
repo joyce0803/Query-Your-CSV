@@ -18,6 +18,7 @@ from pandasai.responses.streamlit_response import StreamlitResponse
 from pandasai.helpers import path
 import matplotlib.pyplot as plt
 from streamlit.runtime.media_file_storage import MediaFileStorageError
+from langchain_community.chat_models import ChatCohere
 
 
 load_dotenv()
@@ -104,10 +105,10 @@ def display_df():
 def data_cleaning():
     container2 = st.container()
     container2.success("###### Column Details ")
-    columns_df = pandas_agent.invoke("What are the meaning of the columns?")
+    columns_df = pandas_agent.run("What are the meaning of the columns?")
     container2.write(columns_df)
     container2.success("###### Missing Values")
-    missing_values = pandas_agent.invoke(
+    missing_values = pandas_agent.run(
         "How many missing values does this dataframe have? Start the answer with 'There are' ")
     container2.write(missing_values)
     container2.success("###### Duplicate Values")
@@ -140,7 +141,6 @@ def data_summarization():
 # @st.cache_data(experimental_allow_widgets=True)
 def function_question_variable(user_question_variable):
     try:
-
         if os.path.exists(os.path.join(user_defined_path, "temp_chart.png")):
             os.remove(os.path.join(user_defined_path, "temp_chart.png"))
         st.write(df)
@@ -168,7 +168,6 @@ def function_question_variable(user_question_variable):
 
 def user_queries():
     try:
-
         st.markdown(
             """
             <h5 style="text-align:center; ",>Ask your Queries 🤖</h5>
@@ -480,9 +479,11 @@ elif menu == "Query your CSV":
     )
     api_key_llm = st.sidebar.text_input("#### Enter your API key", type="password")
     if api_key_llm:
+        model = genai.GenerativeModel("gemini-pro")
         genai.configure(api_key=api_key_llm)
         # pandasai_llm = GooglePalm(api_key=api_key_llm)
-        llm = ChatGoogleGenerativeAI(model="gemini-pro", google_api_key=api_key_llm, temperature=0,convert_system_message_to_human=True,tools=tools)
+        llm = ChatGoogleGenerativeAI(model="gemini-pro", google_api_key=api_key_llm, temperature=0,convert_system_message_to_human=True)
+        # llm2 = ChatCohere(model="command",temperature=0,api_key = api_key_llm)
         user_csv = st.sidebar.file_uploader("#### Upload your file here!", type="csv")
         if user_csv is not None:
             user_csv.seek(0)
