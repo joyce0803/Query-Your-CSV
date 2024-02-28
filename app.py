@@ -13,12 +13,10 @@ from langchain_experimental.agents.agent_toolkits.pandas.base import create_pand
 from langchain import hub
 from st_tabs import TabBar
 from pandasai import SmartDataframe
-from pandasai.llm.google_palm import GooglePalm
 from pandasai.responses.streamlit_response import StreamlitResponse
 from pandasai.helpers import path
 import matplotlib.pyplot as plt
 from streamlit.runtime.media_file_storage import MediaFileStorageError
-from langchain_community.chat_models import ChatCohere
 import mysql.connector
 
 
@@ -26,19 +24,6 @@ load_dotenv()
 st.set_page_config(layout="wide")
 
 
-
-# api_key_llm = st.sidebar.text_input("#### Enter your API key", type="password")
-# if api_key_llm:
-#     # GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY')
-#     # COHERE_API_KEY = os.getenv('COHERE_API_KEY')
-#
-#     lida = Manager(text_gen=llm(provider="cohere", api_key=api_key_llm))
-#     textgen_config = TextGenerationConfig(temperature=0.5, model="command", use_cache=True)
-#
-#     genai.configure(api_key=api_key_llm)
-#     llm = ChatGoogleGenerativeAI(model="gemini-pro", google_api_key=api_key_llm,temperature=0,convert_system_message_to_human=True)
-# else:
-#     st.error("API key is required to use this application !!!!")
 
 tools = ...
 prompt = hub.pull("hwchase17/openai-functions-agent")
@@ -49,42 +34,48 @@ model = genai.GenerativeModel('gemini-pro')
 
 
 
-
-
-# model = genai.GenerativeModel('gemini-pro')
-# genai.configure(api_key=GOOGLE_API_KEY)
-# pandasai_llm = GooglePalm(api_key=GOOGLE_API_KEY)
-
-
-
 try:
     user_defined_path = path.find_project_root()
 except ValueError:
     user_defined_path = os.getcwd()
 user_defined_path = os.path.join(user_defined_path, "exports", "charts")
 
-def connect_to_database(database_name,user_name,password):
+def connect_to_database():
     return mysql.connector.connect(
-        host="localhost",
-        user=user_name,
+        host='localhost',
+        user=username,
         password=password,
         database=database_name
     )
 
-def execute_query(query):
+def execute_query(connection, query, database, fetch_data=True):
     try:
-        connection = connect_to_database()
+        # connection = connect_to_database()
         if connection.is_connected():
             cursor = connection.cursor()
+            print(query)
+            cursor.execute(f"USE {database};")
             cursor.execute(query)
             rows = cursor.fetchall()
+            if rows is not None:
+                connection.commit()
+
             return rows
+
+            # else:
+            #     cursor.execute(f'''SELECT * FROM {table_name}''')
+            #     rows = cursor.fetchall()
+            #     return rows
     except mysql.connector.Error as e:
         st.error(f"Error executing SQL Query: {e}")
-    finally:
-        if connection.is_connected():
-            cursor.close()
-            connection.close()
+        connection.rollback()
+    # finally:
+    #     if connection.is_connected():
+    #         cursor.close()
+    #         connection.close()
+
+
+
 
 functions = [
     "boxplot",
@@ -171,27 +162,28 @@ def data_summarization():
 # @st.cache_data(experimental_allow_widgets=True)
 def function_question_variable(user_question_variable):
     try:
-        if os.path.exists(os.path.join(user_defined_path, "temp_chart.png")):
-            os.remove(os.path.join(user_defined_path, "temp_chart.png"))
-        st.write(df)
-        st.line_chart(df, y=[user_question_variable])
-        summary_statistics = pandasai_agent.chat(
-            f"What are the mean, median, mode, standard deviation, variance, range, quartiles, skewness and kurtosis of {user_question_variable}")
-        st.write(summary_statistics)
-        normality = pandas_agent.run(f"Check for normality or specific distribution shapes of {user_question_variable} and plot necessary graphs")
-        st.write(normality)
-        try:
-            response = pandasai_agent.chat(f"Check for normality or specific distribution shapes of {user_question_variable} and plot necessary graphs")
-            print(response)
-            st.image("exports/charts/temp_chart.png",use_column_width="auto")
-        except MediaFileStorageError as m:
-            pass
-        outliers = pandas_agent.run(f"Assess the presence of outliers of {user_question_variable}")
-        st.write(outliers)
-        trends = pandas_agent.run(f"Analyse trends, seasonality, and cyclic patterns of {user_question_variable} and plot necessary graphs")
-        st.write(trends)
-        missing_values = pandas_agent.run(f"Determine the extent of missing values of {user_question_variable}")
-        st.write(missing_values)
+        with st.spinner():
+            if os.path.exists(os.path.join(user_defined_path, "temp_chart.png")):
+                os.remove(os.path.join(user_defined_path, "temp_chart.png"))
+            st.write(df)
+            st.line_chart(df, y=[user_question_variable])
+            summary_statistics = pandasai_agent.chat(
+                f"What are the mean, median, mode, standard deviation, variance, range, quartiles, skewness and kurtosis of {user_question_variable}")
+            st.write(summary_statistics)
+            normality = pandas_agent.run(f"Check for normality or specific distribution shapes of {user_question_variable}  and plot the necessary graphs")
+            st.write(normality)
+            try:
+                response = pandasai_agent.chat(f"Check for normality or specific distribution shapes of {user_question_variable} and plot necessary graphs")
+                print(response)
+                st.image("exports/charts/temp_chart.png",use_column_width="auto")
+            except MediaFileStorageError as m:
+                pass
+            outliers = pandas_agent.run(f"Assess the presence of outliers of {user_question_variable}")
+            st.write(outliers)
+            trends = pandas_agent.run(f"Analyse trends, seasonality, and cyclic patterns of {user_question_variable} ")
+            st.write(trends)
+            missing_values = pandas_agent.run(f"Determine the extent of missing values of {user_question_variable}")
+            st.write(missing_values)
     except Exception as e:
         pass
     return
@@ -204,7 +196,7 @@ def user_queries():
             """
             ,unsafe_allow_html=True
         )
-        messages = st.container(height=500)
+        messages = st.container(height=600)
 
         query = st.chat_input("Enter your query")
         if query:
@@ -239,7 +231,7 @@ def user_queries():
 
 def function_agent():
     st.write(" ")
-    component = TabBar(tabs=["Data Overview", "Data Summarization", "Analyze / Visualize", "User Queries","SQl-To-Text"],default=0,color="black",activeColor="#5031F",fontSize="15px")
+    component = TabBar(tabs=["Data Overview", "Data Summarization", "Analyze / Visualize", "Variable of study","User Queries"],default=0,color="black",activeColor="#5031F",fontSize="15px")
     if component == 0:
         col1, col2 = st.columns(2)
         with col1:
@@ -251,13 +243,12 @@ def function_agent():
     elif component == 2:
         demo()
     elif component == 3:
-        col1, col2 = st.columns(2)
-        with col1:
-            user_question_variable = st.selectbox("What variable are you interested in?", list(df.columns),index=None,placeholder='Choose an option')
-            if user_question_variable is not None and user_question_variable != "":
-                function_question_variable(user_question_variable)
-        with col2:
-            user_queries()
+        user_question_variable = st.selectbox("What variable are you interested in?", list(df.columns),index=None,placeholder='Choose an option')
+        if user_question_variable is not None and user_question_variable != "":
+            function_question_variable(user_question_variable)
+    elif component == 4:
+        user_queries()
+
 
 
 def demo():
@@ -341,7 +332,7 @@ def demo():
 
             function_args = ", ".join([f"'{input_val}'" for input_val in user_input.values()])
             print(function_args)
-            function_call = f"df1.{function_name}({function_args})"
+            function_call = f"pandasai_agent.{function_name}({function_args})"
 
             # Evaluate the function call dynamically
             try:
@@ -351,7 +342,7 @@ def demo():
                     # Display the saved image
                     st.image("temp_image.png", use_column_width='auto')
                 elif isinstance(result, pd.DataFrame):
-                    st.write(result)
+                    st.dataframe(result)
                 elif isinstance(result, str) and (result.endswith(".png") or result.endswith(".jpg") or result.endswith(".jpeg")):
                     st.image(result, use_column_width='auto')
                 else:
@@ -419,7 +410,7 @@ if menu == "Summarize":
 
 
             if summaryGoal:
-                st.sidebar.write("#### Goal Selection")
+                st.sidebar.write("#### Goal Selection") 
                 num_goals = st.sidebar.slider(
                     "Number of goals to generate",
                     min_value=1,
@@ -540,25 +531,23 @@ elif menu == "Text-To-SQL":
     st.markdown(
         """
             <div style=text-align:center;>
-                <h2>SQL Query Generator 🛢️🤖 </h2>
+                <h1 style="color: dark-grey; font-weight:bold; margin-top:0px; padding-top:0px; margin-bottom:10px;">SQL Query Generator 🛢️🤖 </h1>
                 <p style=color:grey;>This tool can retrieve data from SQL Database using natural language queries</p>
             </div>
         """,
         unsafe_allow_html=True
     )
-    database_name = st.text_input("Enter the name of the database")
-    table_name = st.text_input("Enter the name of the table")
-    user_name = st.text_input("Enter the username")
-    password = st.text_input("Enter the password", type="password")
-
-    column_names = []
-    cursor = None
-    connection = None
-    if database_name is not None and table_name is not None and user_name is not None and password is not None:
+    api_key_llm = st.sidebar.text_input("#### Enter your API key", type="password")
+    if api_key_llm:
+        model = genai.GenerativeModel("gemini-pro")
+        genai.configure(api_key=api_key_llm)
+        database_name = st.sidebar.text_input("Enter the name of the database")
+        table_name = st.sidebar.text_input("Enter the name of the table")
+        username = st.sidebar.text_input("Enter your username")
+        password = st.sidebar.text_input("Enter your password")
+        column_names = []
         try:
-
-            connection = connect_to_database(database_name,user_name,password)
-
+            connection = connect_to_database()
             if connection.is_connected():
                 cursor = connection.cursor()
                 cursor.execute(f'''SELECT * FROM {table_name}''')
@@ -568,22 +557,16 @@ elif menu == "Text-To-SQL":
                 st.dataframe(df, height=400)
         except mysql.connector.Error as e:
             print("Error reading data from MySQL table:", e)
-        finally:
-            if cursor is not None:
-                cursor.close()
-            if connection is not None:
-                connection.close()
-            print("MySQL connection is closed")
 
         st.write('')
 
-        if table_name is not None and column_names:
+        if table_name and column_names and database_name and username and password:
             text_input = st.text_area("##### Enter your Query")
             submit = st.button("Retrieve data from SQL")
             if submit:
                 with st.spinner("Executing SQL Query..."):
                     template = f"""
-                            Create a SQL query snippet using the below text for the table with table name {table_name} and columns {column_names}:
+                            Create a SQL query snippet using the below text for the table with database name and table name as {database_name}.{table_name} and columns {column_names}:
                             ```
                                 {text_input}
                             ```
@@ -593,7 +576,7 @@ elif menu == "Text-To-SQL":
                     response = model.generate_content(formatted_template)
                     sql_query = response.text
                     sql_query = sql_query.strip().lstrip("```sql").rstrip("```")
-                    rows = execute_query(sql_query)
+                    rows = execute_query(connection,sql_query,database_name)
 
                     explanation = f"""
                                         Explain this sql Query:
@@ -616,9 +599,15 @@ elif menu == "Text-To-SQL":
                         if rows:
                             st.dataframe(rows)
                         else:
-                            st.info("No data retrieved from the database")
+                            st.info("Data updated successfully !!!")
+                            if connection.is_connected():
+                                cursor.execute(f'''SELECT * FROM {table_name}''')
+                                rows = cursor.fetchall()
+                                st.dataframe(rows)
+
                         st.write(" ")
                         st.write(" ")
                         st.success("Explanation of this SQL Query")
                         st.markdown(explain_response)
-
+    else:
+        st.error("API key is required to use this application !!!!")
