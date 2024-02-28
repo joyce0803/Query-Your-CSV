@@ -76,6 +76,31 @@ def execute_query(connection, query, database, fetch_data=True):
 
 
 
+def get_table_data(connection, table_name):
+    try:
+        cursor = connection.cursor()
+        cursor.execute(f"SELECT * FROM {table_name}")
+        table_data = cursor.fetchall()
+        column_names = [i[0] for i in cursor.description]
+        return table_data, column_names
+    except mysql.connector.Error as e:
+        st.error(f"Error: {e}")
+        return [], []
+
+
+def get_tables_in_database(connection):
+    try:
+        cursor = connection.cursor()
+        cursor.execute("SHOW TABLES")
+        tables = cursor.fetchall()
+        table_names = [table[0] for table in tables]
+        return table_names
+    except mysql.connector.Error as e:
+        st.error(f"Error: {e}")
+        return []
+
+
+
 
 functions = [
     "boxplot",
@@ -351,6 +376,8 @@ def demo():
                 st.error(f"Error occurred while executing {selected_function}: {str(e)}")
 
 
+
+
 menu = st.sidebar.selectbox('#### Choose an Option',["Summarize","Query your CSV","Text-To-SQL"])
 if menu == "Summarize":
     st.title("Summarization of your Data")
@@ -503,9 +530,7 @@ elif menu == "Query your CSV":
     if api_key_llm:
         model = genai.GenerativeModel("gemini-pro")
         genai.configure(api_key=api_key_llm)
-        # pandasai_llm = GooglePalm(api_key=api_key_llm)
         llm = ChatGoogleGenerativeAI(model="gemini-pro", google_api_key=api_key_llm, temperature=0,convert_system_message_to_human=True)
-        # llm2 = ChatCohere(model="command",temperature=0,api_key = api_key_llm)
         user_csv = st.sidebar.file_uploader("#### Upload your file here!", type="csv")
         if user_csv is not None:
             user_csv.seek(0)
@@ -544,24 +569,30 @@ elif menu == "Text-To-SQL":
         database_name = st.sidebar.text_input("Enter the name of the database")
         table_name = st.sidebar.text_input("Enter the name of the table")
         username = st.sidebar.text_input("Enter your username")
-        password = st.sidebar.text_input("Enter your password")
+        password = st.sidebar.text_input("Enter your password",type="password")
         column_names = []
         try:
             connection = connect_to_database()
             if connection.is_connected():
+                tables = get_tables_in_database(connection)
+                for table in tables:
+                    st.subheader(f"Table: {table}")
+                    table_data, column_names = get_table_data(connection, table)
+                    df = pd.DataFrame(table_data, columns=column_names)
+                    st.dataframe(df)
                 cursor = connection.cursor()
-                cursor.execute(f'''SELECT * FROM {table_name}''')
-                rows = cursor.fetchall()
-                column_names = [i[0] for i in cursor.description]
-                df = pd.DataFrame(rows, columns=column_names)
-                st.dataframe(df, height=400)
+                # cursor.execute(f'''SELECT * FROM {table_name}''')
+                # rows = cursor.fetchall()
+                # column_names = [i[0] for i in cursor.description]
+                # df = pd.DataFrame(rows, columns=column_names)
+                # st.dataframe(df, height=400)
         except mysql.connector.Error as e:
             print("Error reading data from MySQL table:", e)
 
         st.write('')
 
-        if table_name and column_names and database_name and username and password:
-            text_input = st.text_area("##### Enter your Query")
+        if database_name and username and password:
+            text_input = st.text_area("##### Enter your Query (For data from multiple tables, specify both the table names, 'ON' and 'WHERE' conditions)")
             submit = st.button("Retrieve data from SQL")
             if submit:
                 with st.spinner("Executing SQL Query..."):
