@@ -22,12 +22,13 @@ To get started with Query-Your-CSV, follow these steps:
 
 - Launch the Application: Run the application and start interacting with your dataset using natural language queries.
 
-Usage
+### Usage
+
 Once the application is launched, users can input natural language queries to explore and analyze the dataset. The application will utilize Generative AI to generate insights and provide relevant information based on the query.
 
 For SQL database interactions, users can specify actions such as storing, retrieving, editing, or deleting data using natural language commands.
 
-###Example Queries
+### Example Queries
 "Show me the top-selling products in the dataset."
 "What are the trends in customer purchasing behavior?"
 "Retrieve all customer records from the database."
