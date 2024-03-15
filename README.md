@@ -30,9 +30,13 @@ For SQL database interactions, users can specify actions such as storing, retrie
 
 ### Example Queries
 "Show me the top-selling products in the dataset."
+
 "What are the trends in customer purchasing behavior?"
+
 "Retrieve all customer records from the database."
+
 "Update the sales record for product XYZ."
+
 "Delete all transactions older than six months."
 
 ![Sample Image](https://github.com/joyce0803/Query-Your-CSV/blob/main/query1.jpg)
