@@ -1,6 +1,6 @@
 ## Query-Your-CSV
 
-Query-Your-CSV is an innovative application designed to revolutionize the way users interact with datasets. By harnessing the power of natural language processing and Generative AI, Query-Your-CSV enables seamless data exploration and analysis, making the process more accessible and efficient for users of all backgrounds.
+Query-Your-CSV is an innovative application designed to revolutionize the way users interact with datasets. By harnessing the power of natural language processing and Generative AI, Query-Your-CSV enables seamless data exploration and analysis, making the process more accessible and efficient for users of all backgrounds. Users can also add, retrieve, delete, display data from the SQL Database using just natural language queries rather than SQL queries.
 
 ### Features
 
